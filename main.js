@@ -89,7 +89,7 @@ function init() {
 
     // 加载模型
     const loader = new GLTFLoader();
-    loader.load('Beijing.glb', (gltf) => {
+    loader.load('ZHANGZIZHONG.glb', (gltf) => {
         const model = gltf.scene;
         model.traverse(n => {
             if (n.isMesh) {
