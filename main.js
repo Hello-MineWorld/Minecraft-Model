@@ -89,24 +89,62 @@ function init() {
 
     // 加载模型
     const loader = new GLTFLoader();
-    loader.load('ZHANGZIZHONG.glb', (gltf) => {
-        const model = gltf.scene;
-        model.traverse(n => {
-            if (n.isMesh) {
-                n.castShadow = true; 
-                n.receiveShadow = true;
-                // 解决模型背面的阴影计算问题
-                if(n.material) n.material.shadowSide = THREE.FrontSide;
+    
+    // 获取进度条 DOM 元素
+    const progressBar = document.getElementById('progress-bar');
+    const loadingText = document.getElementById('loading-text');
+    const loadingOverlay = document.getElementById('loading-overlay');
+
+    loader.load(
+        'ZHANGZIZHONG.glb', // 确保路径正确
+        (gltf) => {
+            // --- 成功回调 ---
+            const model = gltf.scene;
+            model.traverse(n => {
+                if (n.isMesh) {
+                    n.castShadow = true;
+                    n.receiveShadow = true;
+                    if(n.material) n.material.shadowSide = THREE.FrontSide;
+                }
+            });
+            worldModel.add(model);
+            scene.add(worldModel);
+
+            const box = new THREE.Box3().setFromObject(model);
+            controls.target.copy(box.getCenter(new THREE.Vector3()));
+            controls.update();
+
+            isLoaded = true;
+
+            // 隐藏加载层
+            loadingText.innerText = "加载完成！";
+            progressBar.style.width = "100%";
+            setTimeout(() => {
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => loadingOverlay.style.display = 'none', 500);
+            }, 500);
+        },
+        (xhr) => {
+            // --- 进度回调 (关键部分) ---
+            if (xhr.lengthComputable) {
+                const percentComplete = Math.round((xhr.loaded / xhr.total) * 100);
+                progressBar.style.width = percentComplete + '%';
+                loadingText.innerText = `正在下载模型: ${percentComplete}%`;
+            } else {
+                // 如果服务器没有返回文件总大小，显示已下载的数据量
+                const loadedMB = (xhr.loaded / 1024 / 1024).toFixed(2);
+                loadingText.innerText = `已下载: ${loadedMB} MB`;
+                // 这种情况下进度条可以做个往复动画或无限滚动
+                progressBar.style.width = '50%'; 
             }
-        });
-        worldModel.add(model);
-        scene.add(worldModel);
-        
-        const box = new THREE.Box3().setFromObject(model);
-        controls.target.copy(box.getCenter(new THREE.Vector3()));
-        controls.update();
-        isLoaded = true;
-    });
+        },
+        (error) => {
+            // --- 错误回调 ---
+            console.error('加载出错:', error);
+            loadingText.innerText = "加载失败，请检查网络或文件路径";
+            loadingText.style.color = "#ff4444";
+        }
+    );
 
     const slider = document.getElementById('time-slider');
     if(slider) {
